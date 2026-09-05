@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KernelDeck Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>KERNELDECK</h1>
+      <div class="status-bar">
+        <div class="status-item">
+          <span class="label">Hardware:</span>
+          <span id="hardware-status" class="status-badge disconnected">? DISCONNECTED</span>
+        </div>
+        <div class="status-item">
+          <span class="label">Current Gate:</span>
+          <span id="current-gate" class="gate-badge">NONE</span>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="audit-section">
+        <h2>AUDIT LOG</h2>
+        <div class="divider"></div>
+        <div id="audit-log" class="log-container">
+          <p class="empty-log">No events yet.</p>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

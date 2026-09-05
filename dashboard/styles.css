@@ -1,0 +1,162 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'JetBrains Mono', 'Courier New', Courier, monospace;
+  background-color: #0d1117;
+  color: #c9d1d9;
+  line-height: 1.6;
+  padding: 2rem;
+}
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 2rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+header {
+  border-bottom: 2px solid #30363d;
+  padding-bottom: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+h1 {
+  font-size: 2rem;
+  letter-spacing: 0.15em;
+  color: #58a6ff;
+  margin-bottom: 1rem;
+}
+
+.status-bar {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+  font-size: 1.1rem;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.label {
+  color: #8b949e;
+  font-weight: bold;
+}
+
+.status-badge {
+  font-weight: bold;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+}
+
+.status-badge.connected {
+  color: #3fb950;
+  background: rgba(63, 185, 80, 0.15);
+  border: 1px solid #238636;
+}
+
+.status-badge.disconnected {
+  color: #f85149;
+  background: rgba(248, 81, 73, 0.15);
+  border: 1px solid #da3633;
+}
+
+.gate-badge {
+  font-weight: bold;
+  color: #e3b341;
+  background: rgba(227, 179, 65, 0.15);
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  border: 1px solid #9e6a03;
+}
+
+.audit-section h2 {
+  font-size: 1.3rem;
+  letter-spacing: 0.1em;
+  color: #f0f6fc;
+}
+
+.divider {
+  height: 1px;
+  background: #30363d;
+  margin: 0.8rem 0 1.2rem 0;
+}
+
+.log-container {
+  min-height: 200px;
+  max-height: 450px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.empty-log {
+  color: #8b949e;
+  font-style: italic;
+}
+
+.log-entry {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+}
+
+.log-entry .timestamp {
+  color: #8b949e;
+  font-size: 0.85rem;
+  margin-right: 0.8rem;
+}
+
+.log-entry .event-tag {
+  font-weight: bold;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  margin-right: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.event-CHALLENGE_ISSUED {
+  color: #d29922;
+  background: rgba(210, 153, 34, 0.2);
+}
+
+.event-VERDICT_RECEIVED {
+  color: #3fb950;
+  background: rgba(63, 185, 80, 0.2);
+}
+
+.event-TIMEOUT {
+  color: #f85149;
+  background: rgba(248, 81, 73, 0.2);
+}
+
+.event-DEVICE_DISCONNECTED {
+  color: #8b949e;
+  background: rgba(139, 148, 158, 0.2);
+}
+
+.log-entry .cmd {
+  color: #ff7b72;
+  font-weight: bold;
+  margin-top: 0.3rem;
+  word-break: break-all;
+}
+
+.log-entry .details {
+  color: #8b949e;
+  font-size: 0.85rem;
+  margin-top: 0.2rem;
+}
