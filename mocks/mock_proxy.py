@@ -522,7 +522,7 @@ class MockProxyServer:
 
                 if parsed_path == "/v1/chat/completions":
                     body_text = body.decode("utf-8", errors="ignore")
-                    is_risky = ("rm -rf" in body_text) or ("database" in body_text) or ("destructive" in body_text)
+                    is_risky = ("rm -rf" in body_text) or ("destructive" in body_text) or ("drop table" in body_text.lower())
 
                     if is_risky:
                         code, resp_obj = self.issue_challenge(cmd="rm -rf ./database", risk="CRITICAL", cost="$0.04")
