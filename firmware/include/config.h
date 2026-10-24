@@ -13,16 +13,16 @@
 // WiFi & Proxy Connection Details
 // -----------------------------------------------------------------------------
 #ifndef WIFI_SSID
-#define WIFI_SSID "YOUR_WIFI_SSID"
+#define WIFI_SSID "vulcan"
 #endif
 
 #ifndef WIFI_PASS
-#define WIFI_PASS "YOUR_WIFI_PASSWORD"
+#define WIFI_PASS "122345678"
 #endif
 
-// IP address of machine running KernelDeck Proxy (e.g. 192.168.x.x)
+// IP address of machine running KernelDeck Proxy on 'vulcan' network
 #ifndef PROXY_HOST
-#define PROXY_HOST "192.168.1.100"
+#define PROXY_HOST "10.228.92.225"
 #endif
 
 #define PROXY_PORT     8080

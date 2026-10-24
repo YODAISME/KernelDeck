@@ -22,6 +22,7 @@ build/
 *.o
 *.bin
 *.elf
+.pio/
 
 # IDE
 .vscode/
