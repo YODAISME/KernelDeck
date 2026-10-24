@@ -8,50 +8,54 @@
 void DisplayManager::begin() {
     if (TFT_BL >= 0) {
         pinMode(TFT_BL, OUTPUT);
-        digitalWrite(TFT_BL, HIGH); // Backlight on
+        digitalWrite(TFT_BL, HIGH); // Backlight enabled
     }
 
+    // TPM408-2.8 ST7789 Initialization
     tft.init(TFT_WIDTH, TFT_HEIGHT);
     tft.setRotation(TFT_ROTATION);
     tft.fillScreen(ST77XX_BLACK);
 }
 
 void DisplayManager::drawHeader(const char* title, uint16_t bgColor, uint16_t textColor) {
-    tft.fillRect(0, 0, TFT_WIDTH, 32, bgColor);
+    int16_t w = tft.width();
+    tft.fillRect(0, 0, w, 32, bgColor);
     tft.setTextSize(2);
     tft.setTextColor(textColor);
     
-    // Center title roughly
-    int16_t x = max(10, (TFT_WIDTH - (int)(strlen(title) * 12)) / 2);
+    int16_t x = max(10, (int)(w - (strlen(title) * 12)) / 2);
     tft.setCursor(x, 8);
     tft.print(title);
 }
 
 void DisplayManager::showBootScreen() {
     currentRenderedState = STATE_BOOT;
+    int16_t w = tft.width();
     tft.fillScreen(ST77XX_BLACK);
     
     drawHeader("KERNELDECK", ST77XX_CYAN, ST77XX_BLACK);
     
     tft.setTextSize(1);
     tft.setTextColor(COLOR_LIGHT_GRAY);
-    tft.setCursor(20, 60);
+    tft.setCursor(20, 50);
     tft.println("Physical Safety Interlock");
-    tft.setCursor(20, 75);
+    tft.setCursor(20, 65);
     tft.println("Hardware Boundary v0.1.0");
 
-    tft.drawFastHLine(20, 95, 200, COLOR_DARK_GRAY);
+    tft.drawFastHLine(20, 85, w - 40, COLOR_DARK_GRAY);
 
     tft.setTextColor(ST77XX_GREEN);
+    tft.setCursor(20, 100);
+    tft.println("Display: TPM408 2.8\" ST7789 (OK)");
     tft.setCursor(20, 115);
-    tft.println("ST7789 Display: OK");
-    tft.setCursor(20, 130);
     tft.println("ALLOW Button: GPIO 12");
-    tft.setCursor(20, 145);
+    tft.setCursor(20, 130);
     tft.println("KILL Button:  GPIO 14");
+    tft.setCursor(20, 145);
+    tft.println("Output Control: GPIO 27 (ACTIVE LOW/ISOLATED)");
 
     tft.setTextColor(COLOR_LIGHT_GRAY);
-    tft.setCursor(20, 180);
+    tft.setCursor(20, 185);
     tft.println("Initializing system...");
 }
 
@@ -63,46 +67,50 @@ void DisplayManager::showConnecting(const char* stage, const char* detail) {
 
     tft.setTextSize(2);
     tft.setTextColor(ST77XX_WHITE);
-    tft.setCursor(20, 70);
+    tft.setCursor(20, 65);
     tft.println(stage);
 
     tft.setTextSize(1);
     tft.setTextColor(COLOR_LIGHT_GRAY);
-    tft.setCursor(20, 110);
+    tft.setCursor(20, 105);
     tft.println(detail);
 
-    tft.setCursor(20, 150);
+    tft.setCursor(20, 140);
     tft.println("Target Proxy:");
     tft.setTextColor(ST77XX_CYAN);
-    tft.setCursor(20, 165);
+    tft.setCursor(20, 155);
     tft.print(PROXY_HOST);
     tft.print(":");
     tft.println(PROXY_PORT);
 
     tft.setTextColor(COLOR_DARK_GRAY);
-    tft.setCursor(20, 210);
+    tft.setCursor(20, 195);
     tft.println("Awaiting network handshake...");
 }
 
 void DisplayManager::renderTelemetryBox(float spent, float ceiling) {
-    // Exact bounding box inside telemetry area
-    // Box dimensions: x=15, y=115, w=210, h=65
-    tft.fillRect(20, 130, 200, 45, ST77XX_BLACK);
+    int16_t w = tft.width();
+    int16_t boxX = 20;
+    int16_t boxW = w - 40;
+
+    // Erase and redraw numerical values only (flicker-free bounding box)
+    tft.fillRect(boxX + 5, 135, boxW - 10, 42, ST77XX_BLACK);
 
     tft.setTextSize(2);
     tft.setTextColor(ST77XX_GREEN);
-    tft.setCursor(25, 132);
+    tft.setCursor(boxX + 15, 137);
     tft.print("SPENT: $");
     tft.print(spent, 2);
 
     tft.setTextColor(COLOR_LIGHT_GRAY);
-    tft.setCursor(25, 155);
+    tft.setCursor(boxX + 15, 158);
     tft.print("CEIL:  $");
     tft.print(ceiling, 2);
 }
 
 void DisplayManager::showIdle(TelemetryData& telem, bool forceFullRedraw) {
-    // If transitioning from another state or forced, do a full screen draw
+    int16_t w = tft.width();
+
     if (currentRenderedState != STATE_IDLE || forceFullRedraw) {
         currentRenderedState = STATE_IDLE;
         tft.fillScreen(ST77XX_BLACK);
@@ -113,25 +121,34 @@ void DisplayManager::showIdle(TelemetryData& telem, bool forceFullRedraw) {
         // System status
         tft.setTextSize(1);
         tft.setTextColor(COLOR_LIGHT_GRAY);
-        tft.setCursor(20, 48);
+        tft.setCursor(20, 45);
         tft.print("Proxy:    ");
         tft.setTextColor(ST77XX_GREEN);
         tft.println("CONNECTED");
 
         tft.setTextColor(COLOR_LIGHT_GRAY);
-        tft.setCursor(20, 64);
-        tft.print("Physical: ");
-        tft.setTextColor(ST77XX_GREEN);
-        tft.println("MONITORING");
+        tft.setCursor(20, 60);
+        tft.print("Gate Out: ");
+        tft.setTextColor(ST77XX_RED);
+        tft.println("ISOLATED / LOCKED (GPIO 27)");
 
-        tft.drawFastHLine(15, 82, 210, COLOR_DARK_GRAY);
+        tft.setTextColor(COLOR_LIGHT_GRAY);
+        tft.setCursor(20, 75);
+        tft.print("Display:  ");
+        tft.setTextColor(ST77XX_CYAN);
+        tft.println("TPM408-2.8 ST7789");
+
+        tft.drawFastHLine(15, 92, w - 30, COLOR_DARK_GRAY);
 
         // Telemetry container box
-        tft.drawRect(15, 95, 210, 95, COLOR_DARK_GREEN);
-        tft.fillRect(16, 96, 208, 20, COLOR_DARK_GREEN);
+        int16_t boxX = 15;
+        int16_t boxW = w - 30;
+        tft.drawRect(boxX, 105, boxW, 85, COLOR_DARK_GREEN);
+        tft.fillRect(boxX + 1, 106, boxW - 2, 20, COLOR_DARK_GREEN);
+        
         tft.setTextSize(1);
         tft.setTextColor(ST77XX_WHITE);
-        tft.setCursor(25, 102);
+        tft.setCursor(boxX + 10, 112);
         tft.print("TELEMETRY / BUDGET LIMIT");
 
         // Render initial values
@@ -141,13 +158,12 @@ void DisplayManager::showIdle(TelemetryData& telem, bool forceFullRedraw) {
         // Footer status
         tft.setTextSize(1);
         tft.setTextColor(COLOR_LIGHT_GRAY);
-        tft.setCursor(20, 215);
+        tft.setCursor(20, 210);
         tft.print("Listening on /ws/deck...");
         return;
     }
 
-    // PROTOCOL.md §8: Partial redraw only when spent or ceiling values actually change!
-    // Prevents visible screen flicker and memory fragmentation during the 5s PING cycle.
+    // PROTOCOL.md §8: Partial redraw only when numbers change
     if (telem.hasChanged()) {
         renderTelemetryBox(telem.spent, telem.ceiling);
         telem.markClean();
@@ -156,6 +172,7 @@ void DisplayManager::showIdle(TelemetryData& telem, bool forceFullRedraw) {
 
 void DisplayManager::showChallenge(const ChallengeData& chal) {
     currentRenderedState = STATE_CHALLENGE;
+    int16_t w = tft.width();
     tft.fillScreen(ST77XX_BLACK);
 
     // Flashing red header
@@ -164,90 +181,102 @@ void DisplayManager::showChallenge(const ChallengeData& chal) {
     // Risk and cost line
     tft.setTextSize(1);
     tft.setTextColor(ST77XX_YELLOW);
-    tft.setCursor(15, 42);
+    tft.setCursor(15, 40);
     tft.print("RISK: ");
     tft.print(chal.risk.length() ? chal.risk.c_str() : "CRITICAL");
 
     tft.setTextColor(ST77XX_WHITE);
-    tft.setCursor(140, 42);
+    tft.setCursor(w - 110, 40);
     tft.print("COST: ");
     tft.print(chal.cost.length() ? chal.cost.c_str() : "$0.04");
 
     // Command container box
-    tft.drawRect(12, 58, 216, 115, ST77XX_RED);
-    tft.fillRect(13, 59, 214, 18, COLOR_DARK_RED);
+    int16_t boxW = w - 24;
+    tft.drawRect(12, 55, boxW, 115, ST77XX_RED);
+    tft.fillRect(13, 56, boxW - 2, 18, COLOR_DARK_RED);
     tft.setTextSize(1);
     tft.setTextColor(ST77XX_WHITE);
-    tft.setCursor(18, 64);
+    tft.setCursor(18, 61);
     tft.print("SUSPENDED COMMAND");
 
-    // Render command text (word-wrapped cleanly, max 64 chars)
+    // Render command text (max 64 chars wrapped)
     tft.setTextSize(2);
     tft.setTextColor(ST77XX_YELLOW);
-    tft.setCursor(18, 85);
+    tft.setCursor(18, 82);
 
     String displayCmd = chal.cmd;
     if (displayCmd.length() > 64) {
         displayCmd = displayCmd.substring(0, 61) + "...";
     }
 
-    // Print with basic line wrapping for 240px width
-    if (displayCmd.length() <= 16) {
+    int charsPerLine = w > 240 ? 24 : 16;
+    if (displayCmd.length() <= (size_t)charsPerLine) {
         tft.println(displayCmd);
     } else {
-        tft.println(displayCmd.substring(0, 16));
-        tft.setCursor(18, 105);
-        tft.println(displayCmd.substring(16, min((size_t)32, displayCmd.length())));
-        if (displayCmd.length() > 32) {
-            tft.setCursor(18, 125);
-            tft.println(displayCmd.substring(32, min((size_t)48, displayCmd.length())));
+        tft.println(displayCmd.substring(0, charsPerLine));
+        tft.setCursor(18, 102);
+        tft.println(displayCmd.substring(charsPerLine, min((size_t)(charsPerLine * 2), displayCmd.length())));
+        if (displayCmd.length() > (size_t)(charsPerLine * 2)) {
+            tft.setCursor(18, 122);
+            tft.println(displayCmd.substring(charsPerLine * 2, min((size_t)(charsPerLine * 3), displayCmd.length())));
         }
     }
 
     // Request ID small tag
     tft.setTextSize(1);
     tft.setTextColor(COLOR_LIGHT_GRAY);
-    tft.setCursor(18, 155);
+    tft.setCursor(18, 153);
     tft.print("ID: ");
     tft.print(chal.requestId);
 
     // Bottom Physical Button Prompts
-    // Green button on left, Red button on right
-    tft.fillRect(12, 185, 100, 42, ST77XX_GREEN);
+    int16_t btnW = (w - 36) / 2;
+    tft.fillRect(12, 185, btnW, 44, ST77XX_GREEN);
     tft.setTextSize(2);
     tft.setTextColor(ST77XX_BLACK);
-    tft.setCursor(20, 198);
+    tft.setCursor(20 + (btnW - 60) / 2, 200);
     tft.print("ALLOW");
 
-    tft.fillRect(128, 185, 100, 42, ST77XX_RED);
+    tft.fillRect(12 + btnW + 12, 185, btnW, 44, ST77XX_RED);
     tft.setTextSize(2);
     tft.setTextColor(ST77XX_WHITE);
-    tft.setCursor(148, 198);
+    tft.setCursor(12 + btnW + 12 + (btnW - 48) / 2, 200);
     tft.print("KILL");
 }
 
 void DisplayManager::showResolved(const String& verdict) {
     currentRenderedState = STATE_RESOLVED;
+    int16_t w = tft.width();
     
     if (verdict == "ALLOW") {
         tft.fillScreen(ST77XX_GREEN);
         tft.setTextSize(3);
         tft.setTextColor(ST77XX_BLACK);
-        tft.setCursor(45, 90);
+        int16_t x = max(20, (int)(w - 126) / 2);
+        tft.setCursor(x, 80);
         tft.print("ALLOWED");
         
+        tft.setTextSize(2);
+        tft.setCursor(max(20, (int)(w - 216) / 2), 125);
+        tft.print("OUT CONTROL: HIGH");
+
         tft.setTextSize(1);
-        tft.setCursor(50, 130);
-        tft.print("Operator Authorized Action");
+        tft.setCursor(max(20, (int)(w - 162) / 2), 160);
+        tft.print("Hardware Gate Asserted");
     } else {
         tft.fillScreen(ST77XX_RED);
         tft.setTextSize(3);
         tft.setTextColor(ST77XX_WHITE);
-        tft.setCursor(65, 90);
+        int16_t x = max(20, (int)(w - 108) / 2);
+        tft.setCursor(x, 80);
         tft.print("KILLED");
         
+        tft.setTextSize(2);
+        tft.setCursor(max(20, (int)(w - 204) / 2), 125);
+        tft.print("OUT CONTROL: LOW");
+
         tft.setTextSize(1);
-        tft.setCursor(45, 130);
-        tft.print("Execution Aborted Locally");
+        tft.setCursor(max(20, (int)(w - 162) / 2), 160);
+        tft.print("Hardware Gate Isolated");
     }
 }

@@ -1,7 +1,7 @@
 /**
  * KernelDeck ESP32 Firmware — Main Application
  * ============================================
- * Target: ESP32 + ST7789 SPI TFT Display (240x240) + ALLOW / KILL Buttons
+ * Target: ESP32 + TPM408-2.8 (2.8" ST7789 TFT) + ALLOW / KILL Buttons + Output Control Pin
  * Owner: B
  * Protocol Reference: PROTOCOL.md
  */
@@ -26,6 +26,16 @@ ChallengeData  activeChallenge;
 TelemetryData  telemetry;
 unsigned long  stateTransitionTime = 0;
 unsigned long  lastWiFiRetryTime   = 0;
+
+void setOutControl(bool enabled) {
+    bool pinLevel = enabled ? (OUT_CONTROL_ACTIVE_HIGH ? HIGH : LOW)
+                            : (OUT_CONTROL_ACTIVE_HIGH ? LOW : HIGH);
+    digitalWrite(PIN_OUT_CONTROL, pinLevel);
+    Serial.printf("[GATE OUT] Output Control is %s (GPIO %d = %s)\n",
+                  enabled ? "ASSERTED / UNLOCKED" : "ISOLATED / LOCKED",
+                  PIN_OUT_CONTROL,
+                  pinLevel == HIGH ? "HIGH" : "LOW");
+}
 
 void transitionToState(DeckState newState) {
     currentState = newState;
@@ -60,31 +70,37 @@ void setup() {
     delay(200);
 
     Serial.println("\n==========================================");
-    Serial.println("       KERNELDECK ESP32 HARDWARE DECK     ");
+    Serial.println("   KERNELDECK HARDWARE DECK (TPM408-2.8)  ");
     Serial.println("==========================================");
 
-    // 1. Initialize Display & Show Boot Screen
+    // 1. Initialize Hardware Output Control Pin (Strict Fail-Closed Default)
+    pinMode(PIN_OUT_CONTROL, OUTPUT);
+    setOutControl(false);
+
+    // 2. Initialize ST7789 Display & Show Boot Screen
     display.begin();
     display.showBootScreen();
     delay(1200);
 
-    // 2. Initialize Physical Buttons
+    // 3. Initialize Physical Buttons
     buttons.begin();
 
-    // 3. Connect to WiFi Network
+    // 4. Connect to WiFi Network
     connectWiFi();
 
-    // 4. Configure WebSocket Client Callbacks (PROTOCOL.md)
+    // 5. Configure WebSocket Client Callbacks (PROTOCOL.md)
     wsClient.begin(
         // On Connection Status Change
         [](bool connected) {
             if (connected) {
                 Serial.println("[APP] Hardware connected to Proxy. Switching to STATE_IDLE.");
+                setOutControl(false);
                 activeChallenge.clear();
                 transitionToState(STATE_IDLE);
                 display.showIdle(telemetry, true);
             } else {
                 Serial.println("[APP] Hardware disconnected from Proxy.");
+                setOutControl(false); // Immediate hardware lockdown
                 activeChallenge.clear();
                 transitionToState(STATE_CONNECTING);
                 display.showConnecting("Proxy Disconnected", "Reconnecting to /ws/deck...");
@@ -94,6 +110,7 @@ void setup() {
         // On Inbound CHALLENGE Message
         [](const ChallengeData& chal) {
             Serial.printf("[APP] Received CHALLENGE for '%s'. Switching to STATE_CHALLENGE.\n", chal.cmd.c_str());
+            setOutControl(false); // Ensure gate output is isolated while awaiting decision
             activeChallenge = chal;
             transitionToState(STATE_CHALLENGE);
             display.showChallenge(activeChallenge);
@@ -102,6 +119,7 @@ void setup() {
         // On Inbound RESET_IDLE Message
         []() {
             Serial.println("[APP] Received RESET_IDLE. Reverting to STATE_IDLE.");
+            setOutControl(false);
             activeChallenge.clear();
             transitionToState(STATE_IDLE);
             display.showIdle(telemetry, true);
@@ -130,6 +148,7 @@ void loop() {
         if (millis() - lastWiFiRetryTime > 10000) {
             lastWiFiRetryTime = millis();
             Serial.println("[WIFI] Connection lost. Attempting reconnection...");
+            setOutControl(false); // Fail-closed isolation
             WiFi.reconnect();
         }
     }
@@ -151,12 +170,14 @@ void loop() {
 
             if (action == BTN_ALLOW) {
                 Serial.println("\n[BUTTON] Operator pressed ALLOW switch!");
+                setOutControl(true); // Physically assert output control gate
                 wsClient.sendDecision(activeChallenge.requestId, "ALLOW");
                 transitionToState(STATE_RESOLVED);
                 display.showResolved("ALLOW");
             } 
             else if (action == BTN_KILL) {
                 Serial.println("\n[BUTTON] Operator pressed KILL switch!");
+                setOutControl(false); // Enforce lockdown
                 wsClient.sendDecision(activeChallenge.requestId, "KILL");
                 transitionToState(STATE_RESOLVED);
                 display.showResolved("KILL");
@@ -165,9 +186,10 @@ void loop() {
         }
 
         case STATE_RESOLVED: {
-            // Show transient confirmation (~500ms) before returning to idle (PROTOCOL.md Section 4)
+            // Show transient confirmation (~600ms) before returning to idle (PROTOCOL.md Section 4)
             if (millis() - stateTransitionTime >= RESOLVED_FLASH_MS) {
                 Serial.println("[APP] Transient confirmation ended. Reverting to STATE_IDLE.");
+                setOutControl(false); // Return to default interlocked isolation
                 activeChallenge.clear();
                 transitionToState(STATE_IDLE);
                 display.showIdle(telemetry, true);

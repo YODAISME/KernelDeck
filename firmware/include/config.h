@@ -3,7 +3,8 @@
 /**
  * KernelDeck ESP32 Hardware Configuration
  * =======================================
- * Target Display: ST7789 SPI TFT (240x240 / 240x320)
+ * Target Display: TPM408-2.8 (2.8" 240x320 TFT, ST7789 Driver)
+ * Output Control: Hardware Interlock Relay / Gate Control Pin
  * Owner: B
  * Protocol Reference: PROTOCOL.md
  */
@@ -19,7 +20,7 @@
 #define WIFI_PASS "YOUR_WIFI_PASSWORD"
 #endif
 
-// IP address of the machine running the KernelDeck Proxy (e.g. 192.168.x.x)
+// IP address of machine running KernelDeck Proxy (e.g. 192.168.x.x)
 #ifndef PROXY_HOST
 #define PROXY_HOST "192.168.1.100"
 #endif
@@ -30,26 +31,37 @@
 // -----------------------------------------------------------------------------
 // Physical Button Pin Assignments
 // -----------------------------------------------------------------------------
-// Wired to Ground with internal INPUT_PULLUP (Active LOW)
-#define PIN_BTN_ALLOW  12   // Green button (ALLOW)
-#define PIN_BTN_KILL   14   // Red button (KILL)
+// Pushbuttons wired to Ground with internal INPUT_PULLUP (Active LOW)
+#define PIN_BTN_ALLOW  12   // Green momentary switch (ALLOW)
+#define PIN_BTN_KILL   14   // Red momentary switch (KILL)
 #define DEBOUNCE_MS    35   // Debounce delay in milliseconds
 
 // -----------------------------------------------------------------------------
-// ST7789 TFT Display SPI Pin Assignments
+// Output Control Pin (Hardware Relay / External Interlock Gate)
 // -----------------------------------------------------------------------------
-// Standard ESP32 VSPI pins
-#define TFT_CS         5    // Chip select (set to -1 if your ST7789 module has no CS pin)
-#define TFT_DC         2    // Data/Command pin
-#define TFT_RST        4    // Reset pin (set to -1 if tied to EN/3.3V)
-#define TFT_MOSI       23   // SPI Data Out (SDA / MOSI)
-#define TFT_SCLK       18   // SPI Clock (SCL / SCLK)
-#define TFT_BL         15   // Backlight control (optional, set to -1 if tied to 3.3V)
+// Drives physical relay, optocoupler, or external enable signal:
+// - LOW  = Safe / Interlocked / Isolated (Default, Kill, Offline, Timeout)
+// - HIGH = Unlocked / Execution Authorized (Operator ALLOW)
+#define PIN_OUT_CONTROL         27
+#define OUT_CONTROL_ACTIVE_HIGH true
 
-// Screen Dimensions & Orientation
+// -----------------------------------------------------------------------------
+// TPM408-2.8 TFT Display Pin Assignments (ST7789 SPI)
+// -----------------------------------------------------------------------------
+// Standard VSPI Pinout for ESP32 & TPM408 2.8" ST7789 Module
+#define TFT_CS         15   // Display Chip Select
+#define TFT_DC         2    // Data / Command pin (RS)
+#define TFT_RST        4    // Hardware Reset pin
+#define TFT_MOSI       23   // SPI MOSI / SDI
+#define TFT_SCLK       18   // SPI Clock / SCK
+#define TFT_MISO       19   // SPI MISO / SDO (optional)
+#define TFT_BL         21   // Display Backlight control (LED / BLK)
+
+// Screen Geometry & Orientation
+// TPM408-2.8 native resolution is 240x320
 #define TFT_WIDTH      240
-#define TFT_HEIGHT     240
-#define TFT_ROTATION   2    // 0, 1, 2, or 3 depending on mounting orientation
+#define TFT_HEIGHT     320
+#define TFT_ROTATION   1    // 1 = Landscape (320x240), 0 = Portrait (240x320)
 
 // -----------------------------------------------------------------------------
 // Timing Constants
