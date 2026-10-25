@@ -32,8 +32,8 @@
 // Physical Button Pin Assignments
 // -----------------------------------------------------------------------------
 // Pushbuttons wired to Ground with internal INPUT_PULLUP (Active LOW)
-#define PIN_BTN_ALLOW  12   // Green momentary switch (ALLOW)
-#define PIN_BTN_KILL   14   // Red momentary switch (KILL)
+#define PIN_BTN_ALLOW  12   // Green momentary switch (ALLOW - Left)
+#define PIN_BTN_KILL   14   // Red momentary switch (KILL - Right)
 #define DEBOUNCE_MS    35   // Debounce delay in milliseconds
 
 // -----------------------------------------------------------------------------
@@ -58,13 +58,21 @@
 #define TFT_BL         21   // Display Backlight control (LED / BLK)
 
 // Screen Geometry & Orientation
-// TPM408-2.8 native resolution is 240x320
+// TPM408-2.8 native resolution is 240x320 (Portrait mode, pins at top)
 #define TFT_WIDTH      240
 #define TFT_HEIGHT     320
-#define TFT_ROTATION   1    // 1 = Landscape (320x240), 0 = Portrait (240x320)
+#define TFT_ROTATION   0    // 0 = Portrait (240x320), pins at top
 
 // -----------------------------------------------------------------------------
 // Timing Constants
 // -----------------------------------------------------------------------------
+#define CHALLENGE_TTL_MS   30000 // 30s challenge countdown window
 #define RESOLVED_FLASH_MS  600   // Duration to show transient ALLOWED/KILLED banner
 #define PING_TIMEOUT_MS    12000 // 2 missed pings threshold (proxy pings every 5s)
+
+// -----------------------------------------------------------------------------
+// Challenge Animation Feature Flag (1 = enabled, 0 = static challenge scene)
+// -----------------------------------------------------------------------------
+#ifndef CHALLENGE_ANIMATIONS
+#define CHALLENGE_ANIMATIONS 1
+#endif

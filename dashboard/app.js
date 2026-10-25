@@ -1,4 +1,4 @@
-// KernelDeck Dashboard Client
+﻿// KernelDeck Dashboard Client
 // Protocol reference: PROTOCOL.md
 
 const hardwareStatusEl = document.getElementById('hardware-status');
@@ -51,10 +51,10 @@ function handleMessage(msg) {
 
 function updateHardwareStatus(connected) {
   if (connected) {
-    hardwareStatusEl.textContent = '? CONNECTED';
+    hardwareStatusEl.textContent = '● CONNECTED';
     hardwareStatusEl.className = 'status-badge connected';
   } else {
-    hardwareStatusEl.textContent = '? DISCONNECTED';
+    hardwareStatusEl.textContent = '○ DISCONNECTED';
     hardwareStatusEl.className = 'status-badge disconnected';
   }
 }

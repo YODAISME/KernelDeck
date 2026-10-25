@@ -16,13 +16,14 @@ from pathlib import Path
 from src.client import ProxyClient
 from src.tools import ToolSandbox, TOOLS_SCHEMA
 from src.ui import (
+    console,
     print_banner,
     print_step_header,
     print_assistant_thought,
     print_tool_call,
     print_tool_result,
     format_error_code,
-    InterlockSpinner
+    InterlockHoldModal
 )
 
 # Denylist patterns per proxy policy engine
@@ -90,11 +91,11 @@ def run_stage_demo(proxy_url=None):
     2. Safe Step 1: Reads database schema (instant pass-through).
     3. Safe Step 2: Writes maintenance log (instant pass-through).
     4. Staged Risky Step: Agent triggers 'rm -rf ./database'.
-       - Must sit in the last message of the request!
        - Pauses mid-flight while hardware interlock waits for human decision.
        - Operator ALLOW or KILL executed and visualized.
     """
-    print_banner()
+    effective_url = proxy_url or os.environ.get("KERNELDECK_PROXY_URL", "http://127.0.0.1:8080/v1")
+    print_banner(proxy_url=effective_url)
 
     root_dir = Path.cwd()
     db_dir = root_dir / "database"
@@ -104,18 +105,18 @@ def run_stage_demo(proxy_url=None):
     safe_step2_text = "Append a maintenance timestamp comment into the database directory."
     preflight_denylist_check([safe_step1_text, safe_step2_text])
 
-    print("[PRE-FLIGHT] Sanitized safe step payloads verified (0 denylist matches).")
-    print("[PRE-FLIGHT] Setting up disposable scratch folder at ./database ...")
+    console.print("[dim][PRE-FLIGHT] Sanitized safe step payloads verified (0 denylist matches).[/dim]")
+    console.print("[dim][PRE-FLIGHT] Initializing scratch database at ./database ...[/dim]")
     setup_disposable_database(db_dir)
-    print("[PRE-FLIGHT] Scratch database initialized successfully.\n")
+    console.print("[dim][PRE-FLIGHT] Scratch database ready.[/dim]")
 
-    client = ProxyClient(base_url=proxy_url)
+    client = ProxyClient(base_url=effective_url)
     sandbox = ToolSandbox(base_dir=root_dir)
 
     # -------------------------------------------------------------
     # Step 1: Safe Operation (Read File)
     # -------------------------------------------------------------
-    print_step_header(1, "Safe Operation — Read Database Schema")
+    print_step_header(1, "Read Database Schema")
     print_assistant_thought("Inspecting local database definition before maintenance...")
     print_tool_call("read_file", {"path": "database/schema.sql"})
 
@@ -124,15 +125,14 @@ def run_stage_demo(proxy_url=None):
         {"role": "user", "content": safe_step1_text}
     ]
 
-    spinner = InterlockSpinner("Relaying to proxy")
-    spinner.start()
+    spinner1 = InterlockHoldModal()
+    spinner1.start()
     try:
-        # Non-gated safe request passes through instantly
         resp = client.create_completion(messages=messages_step1, tools=TOOLS_SCHEMA)
-        spinner.stop()
+        spinner1.stop()
     except Exception as e:
-        spinner.stop()
-        print(f"Unexpected error on safe step 1: {e}")
+        spinner1.stop()
+        console.print(f"[bold red]Unexpected error on safe step 1:[/bold red] {e}")
         return False
 
     res1 = sandbox.read_file("database/schema.sql")
@@ -142,7 +142,7 @@ def run_stage_demo(proxy_url=None):
     # -------------------------------------------------------------
     # Step 2: Safe Operation (Write Maintenance Log)
     # -------------------------------------------------------------
-    print_step_header(2, "Safe Operation — Record Maintenance Timestamp")
+    print_step_header(2, "Record Maintenance Timestamp")
     print_assistant_thought("Writing audit entry to maintenance log...")
     print_tool_call("write_file", {"path": "database/maintenance.log", "content": "STATUS=HEALTHY"})
 
@@ -151,14 +151,14 @@ def run_stage_demo(proxy_url=None):
         {"role": "user", "content": safe_step2_text}
     ]
 
-    spinner = InterlockSpinner("Relaying to proxy")
-    spinner.start()
+    spinner2 = InterlockHoldModal()
+    spinner2.start()
     try:
         resp = client.create_completion(messages=messages_step2, tools=TOOLS_SCHEMA)
-        spinner.stop()
+        spinner2.stop()
     except Exception as e:
-        spinner.stop()
-        print(f"Unexpected error on safe step 2: {e}")
+        spinner2.stop()
+        console.print(f"[bold red]Unexpected error on safe step 2:[/bold red] {e}")
         return False
 
     res2 = sandbox.write_file("database/maintenance.log", f"LOG_TIMESTAMP={time.time()}\nSTATUS=HEALTHY\n")
@@ -168,13 +168,12 @@ def run_stage_demo(proxy_url=None):
     # -------------------------------------------------------------
     # Step 3: Staged Dangerous Operation (rm -rf ./database)
     # -------------------------------------------------------------
-    print_step_header(3, "Risky Operation — Autonomous Cleanup of Directory")
+    print_step_header(3, "Autonomous Directory Cleanup")
     print_assistant_thought("Maintenance complete. Cleaning up scratch database directory...")
 
     risky_cmd = "rm -rf ./database"
     print_tool_call("run_command", {"command": risky_cmd})
 
-    # CRITICAL MUST-DO 2:
     # The proxy scans ONLY the last entry in messages: its content, or tool_calls arguments.
     # Therefore, the risky command MUST sit in the last message!
     messages_risky = [
@@ -182,41 +181,40 @@ def run_stage_demo(proxy_url=None):
         {"role": "user", "content": f"Execute the cleanup operation: {risky_cmd}"}
     ]
 
-    spinner = InterlockSpinner("Sending execution request")
-    spinner.start()
+    # Dedicated non-blocking threaded Live countdown hold modal
+    hold_modal = InterlockHoldModal(command=risky_cmd, risk="CRITICAL", ttl_seconds=30)
+    hold_modal.start()
 
     try:
-        # This call WILL pause mid-flight on the proxy!
+        # This call pauses mid-flight on the proxy awaiting physical button press on the ESP32!
         resp = client.create_completion(messages=messages_risky, tools=TOOLS_SCHEMA)
-        spinner.stop()
+        hold_modal.stop()
 
-        # If we reach here, the proxy returned HTTP 200 OK -> Operator pressed ALLOW!
-        print("\n[OPERATOR APPROVED COMMAND]")
-        print("  Interlock Policy: Physical ALLOW button pressed by operator.")
-        # Execute locally ONLY after HTTP 200 returned
+        # If HTTP 200 returned -> Operator pressed physical ALLOW!
+        console.print("\n[bold green]✔ [OPERATOR APPROVED COMMAND][/bold green]")
+        console.print("[green]  Interlock Policy: Physical ALLOW button pressed by operator.[/green]")
         result = sandbox.run_command(risky_cmd)
         print_tool_result("run_command", result)
-        print(f"  Status: Database directory removed: {not db_dir.exists()}")
+        console.print(f"  [dim]Status: Database directory removed: {not db_dir.exists()}[/dim]\n")
         return True
 
     except Exception as err:
-        spinner.stop()
+        hold_modal.stop()
         status_code, code, message = client.parse_api_error(err)
 
         # Distinguish all three cases by e.code
         format_error_code(code, message)
 
         if code == "HARDWARE_DENIED":
-            # Command was rejected by physical KILL button
-            print("  [SAFETY INTEGRITY CONFIRMED]: Command was blocked from running locally.")
-            print(f"  [VERIFICATION]: Scratch database directory still exists: {db_dir.exists()}\n")
+            console.print("  [bold green][SAFETY INTEGRITY CONFIRMED][/bold green]: Destructive action blocked from local execution.")
+            console.print(f"  [cyan][VERIFICATION][/cyan]: Scratch database intact: [bold]{db_dir.exists()}[/bold]\n")
             return True
         elif code == "HARDWARE_TIMEOUT":
-            print("  [SAFETY INTEGRITY CONFIRMED]: Challenge timed out; command was blocked.\n")
+            console.print("  [bold green][SAFETY INTEGRITY CONFIRMED][/bold green]: 30s challenge timed out; command blocked.\n")
             return True
         elif code == "HARDWARE_OFFLINE":
-            print("  [SAFETY INTEGRITY CONFIRMED]: Hardware disconnected; fail-closed safety preserved.\n")
+            console.print("  [bold green][SAFETY INTEGRITY CONFIRMED][/bold green]: Hardware disconnected; fail-closed safety preserved.\n")
             return True
         else:
-            print(f"  Unknown error during gate test: status={status_code}, code={code}, msg={message}")
+            console.print(f"  Unknown error during gate test: status={status_code}, code={code}, msg={message}")
             return False
