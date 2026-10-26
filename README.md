@@ -12,10 +12,10 @@
 
 ## 📸 The Final Hardware & System in Action
 
-| Idle & Telemetry Display | Hardware Interlock Challenge (`ALLOW` / `KILL`) | Physical Bench Setup |
-| :---: | :---: | :---: |
-| ![KernelDeck Idle State](media/hardware_idle.jpg) | ![KernelDeck Challenge Alert](media/hardware_challenge.jpg) | ![KernelDeck Desk Setup](media/hardware_setup.jpg) |
-| *Continuous live spend and ceiling telemetry* | *Mid-flight hold waiting for physical button press* | *ESP32 with ST7789 TFT LCD & pushbuttons* |
+| Idle & Telemetry Display | Hardware Interlock Challenge (`ALLOW` / `KILL`) |
+| :---: | :---: |
+| ![KernelDeck Idle State](media/hardware_idle.jpg) | ![KernelDeck Challenge Alert](media/hardware_challenge.jpg) |
+| *Continuous live spend and ceiling telemetry* | *Mid-flight hold waiting for physical button press* |
 
 > 📹 **Video Demo:** Check out the live hardware execution recording in [`media/hardware_demo.mp4`](media/hardware_demo.mp4).
 
@@ -45,6 +45,8 @@ Autonomous AI coding agents (Claude Code, Cursor, OpenDevin, autonomous CLI assi
 ---
 
 ## 🏗️ System Architecture
+
+![KernelDeck Architecture](media/kerneldeck_architecture.png)
 
 ```text
 [ Developer Laptop ]                      [ KernelDeck Proxy ]                  [ Upstream AI ]
